@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eco Switch — Redefinir Senha</title>
+  <style>
+    :root{
+      --bg1:#0f172a;
+      --bg2:#07162a;
+      --card:#fafafa;
+      --accent:#73d677;
+      --muted:#9aa4b2;
+      --glass: rgba(255,255,255,0.06);
+      --card-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      --radius:18px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{height:100%;}
+    body{
+      margin:0;
+      min-height:100%;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(115,214,119,0.06), transparent 10%),
+                  linear-gradient(180deg,var(--bg1) 0%, var(--bg2) 100%);
+      color:var(--card);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border-radius:var(--radius);
+      padding:34px;
+      box-shadow:var(--card-shadow);
+      backdrop-filter: blur(6px) saturate(120%);
+      border: 1px solid rgba(255,255,255,0.05);
+      width:420px;
+      max-width:100%;
+    }
+
+    h1{margin:0 0 12px;font-size:26px;}
+    label{display:block;margin-top:14px;font-size:14px}
+    input{
+      width:100%;padding:12px;margin-top:6px;
+      border-radius:10px;border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.08);
+      color:var(--card);
+      font-size:15px;
+    }
+    button{
+      margin-top:18px;padding:12px 18px;border-radius:12px;border:0;
+      background:linear-gradient(90deg,#6ee07a,#2aa05a);
+      color:#05221a;font-weight:700;cursor:pointer;
+      width:100%;font-size:15px;
+      box-shadow:0 8px 20px rgba(18,50,27,0.35)
+    }
+
+    .muted{color:var(--muted);font-size:13px;margin-top:6px}
+    .error{color:#ff6b6b;margin-top:12px;font-size:14px}
+    .success{color:#73d677;margin-top:12px;font-size:14px}
+    .small{font-size:13px}
+  </style>
+</head>
+<body>
+  <div id="card" class="card">
+    <h1>Redefinir senha</h1>
+
+    <p class="muted">Se você acessou esta página via o link de recuperação, use o formulário abaixo para definir a nova senha.</p>
+    <label for="newpass">Nova senha</label>
+    <input id="newpass" type="password" placeholder="Nova senha" autocomplete="new-password" />
+    <label for="conf">Confirmar senha</label>
+    <input id="conf" type="password" placeholder="Confirme a nova senha" autocomplete="new-password" />
+    <button id="updateBtn">Atualizar senha</button>
+    <div id="updateStatus" class="small muted"></div>
+    <div id="updateError" class="error" style="display:none"></div>
+    <div id="updateSuccess" class="success" style="display:none"></div>
+  </div>
+
+  <script type="module">
+    const SUPABASE_URL = 'https://hidlpxxbovmqrqgikess.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpZGxweHhib3ZtcXJxZ2lrZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTU5NDQsImV4cCI6MjA3NjY5MTk0NH0.auN-zYkqqBzSdcdHsOGU-PciX6LZiF19dtPmPOYZCZA';
+
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    const newpassEl = document.getElementById('newpass')
+    const confEl = document.getElementById('conf')
+    const updateBtn = document.getElementById('updateBtn')
+    const updateStatus = document.getElementById('updateStatus')
+    const updateError = document.getElementById('updateError')
+    const updateSuccess = document.getElementById('updateSuccess')
+    const card = document.getElementById('card')
+
+    updateBtn.addEventListener('click', async () => {
+      updateError.style.display = 'none'
+      updateSuccess.style.display = 'none'
+      updateStatus.textContent = ''
+
+      const pass = newpassEl.value
+      const conf = confEl.value
+      if (!pass || pass.length < 6) { updateError.style.display = 'block'; updateError.textContent = 'Senha deve ter ao menos 6 caracteres.'; return }
+      if (pass !== conf) { updateError.style.display = 'block'; updateError.textContent = 'Senhas não conferem.'; return }
+
+      updateBtn.disabled = true
+      updateBtn.textContent = 'Atualizando...'
+
+      try {
+        const { data, error } = await supabase.auth.updateUser({ password: pass })
+        if (error) throw error
+        updateSuccess.style.display = 'block'
+        updateSuccess.textContent = 'Senha atualizada com sucesso.'
+
+        /* ✅ ÚNICA inclusão pedida: esconder formulário após sucesso */
+        card.style.pointerEvents = "none";
+        card.style.opacity = "0.25";
+        
+      } catch (err) {
+        updateError.style.display = 'block'
+        updateError.textContent = err.message || JSON.stringify(err)
+      } finally {
+        updateBtn.disabled = false
+        updateBtn.textContent = 'Atualizar senha'
+      }
+    })
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        updateStatus.textContent = 'Link de recuperação detectado — você pode agora definir uma nova senha.'
+      }
+    })
+
+    ;(async function(){
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data?.session) {
+          updateStatus.textContent = 'Usuário autenticado via link de recuperação. Preencha e envie a nova senha.'
+        }
+      } catch (e) {}
+    })()
+  </script>
+</body>
+</html>
